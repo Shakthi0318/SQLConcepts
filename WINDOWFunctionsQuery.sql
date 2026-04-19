@@ -317,7 +317,43 @@ END SalesSegments FROM(
  NTILE(4) OVER(ORDER BY OrderID) Buckets,
  * FROM Sales.Orders
   
---- 
+--- Percentage ranking
+-- Find the products that fall within the highest 40% of prices
 
+SELECT * FROM Sales.Products
+
+SELECT *, CONCAT(DistRank * 100, '%') DistRankPercentage
+FROM(SELECT
+Product, Price,
+CUME_DIST() OVER(ORDER BY PRICE DESC) DistRank
+FROM Sales.Products)t
+WHERE DistRank <= 0.4
+
+--- Window value functions 
+
+SELECT * FROM Sales.Orders
+
+--- Analyse the month over month (MoM) performance by finding the percentage
+-- changes in sales between the current and previous month
+
+SELECT *,CONCAT(DisPerc * 100, '%')
+ FROM
+(SELECT
+OrderID, OrderDate,
+MONTH(OrderDate) OrderMonth,Sales,
+LEAD(Sales,1,0) OVER (ORDER BY OrderMonth) LeadResults,
+CUME_DIST() OVER(ORDER BY LeadResults) DisPerc
+FROM Sales.Orders)t
+
+SELECT *,
+CurrentMonthSales - PrevMontSales AS MoMChange
+FROM(SELECT
+MONTH(OrderDate) OrderMonth,
+SUM(Sales) CurrentMonthSales,
+LAG(SUM(Sales)) OVER(ORDER BY MONTH(OrderDate)) PrevMontSales
+FROM Sales.Orders
+GROUP BY 
+	MONTH(OrderDate) )t
+ 
 
 
