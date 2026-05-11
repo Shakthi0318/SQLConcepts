@@ -346,7 +346,8 @@ CUME_DIST() OVER(ORDER BY LeadResults) DisPerc
 FROM Sales.Orders)t
 
 SELECT *,
-CurrentMonthSales - PrevMontSales AS MoMChange
+CurrentMonthSales - PrevMontSales AS MoMChange,
+ROUND(CAST((CurrentMonthSales - PrevMontSales) AS FLOAT)/PrevMontSales * 100,1) AS MoM_per
 FROM(SELECT
 MONTH(OrderDate) OrderMonth,
 SUM(Sales) CurrentMonthSales,
@@ -355,5 +356,37 @@ FROM Sales.Orders
 GROUP BY 
 	MONTH(OrderDate) )t
  
+ -- Customers retention analysis
 
+ -- In order to analyze customer loyalty 
+ -- rank customers based on the avg days between their orders
 
+SELECT
+* FROM Sales.Orders
+
+SELECT 
+CustomerID,
+AVG(NoDays) AvgDays,
+RANK() OVER(ORDER BY COALESCE(AVG(NoDays),99999)) rn
+FROM 
+(SELECT
+OrderID, CustomerID,
+OrderDate CurrentDate,
+LEAD(OrderDate) OVER(PARTITION BY CustomerID ORDER BY OrderDate) NextOrder,
+DATEDIFF
+(day, OrderDate, LEAD(OrderDate) OVER(PARTITION BY CustomerID ORDER BY OrderDate)) NoDays
+FROM Sales.Orders)t
+GROUP BY CustomerID
+
+--- FIRST_VALUE and LAST_VALUE
+
+-- Find the lowest and highest sales for each product
+
+SELECT * FROM Sales.Products
+
+SELECT
+ProductID, Sales,
+FIRST_VALUE(Sales) OVER(PARTITION BY ProductID ORDER BY Sales) LowestValu,
+LAST_VALUE(Sales) OVER(PARTITION BY ProductID ORDER BY Sales ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) HighValue
+FROM Sales.Orders
+  
